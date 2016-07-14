@@ -3,6 +3,8 @@ var res = {
     streak : "res/streak.png",
     thunderman : "res/thunderman.png",
     redman : "res/redman.png",
+    spot : "res/spot.png",
+    tile_0 : "res/tile_0.png",
 };
 
 var g_resources = [];
