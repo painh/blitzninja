@@ -21,13 +21,14 @@ function lineRectIntersect(p1, p2, rect) {
     return false;
 }
 
-var HelloWorldLayer = cc.Layer.extend({
+var GameLayer = cc.Layer.extend({
     _draw: null,
     _fingerstreak: null,
     _thunderman: null,
     _moveList: [],
     _sprites: [],
     _lineIdx: 0,
+    _thundermanRunning: false,
 
     ctor: function() {
         //////////////////////////////
@@ -86,7 +87,7 @@ var HelloWorldLayer = cc.Layer.extend({
     },
 
     onThunderManMoved: function() {
-        if (this._lineIdx >= this._moveList.length-1) {
+        if (this._lineIdx >= this._moveList.length - 1) {
             this._thunderman.stopAllActions();
             return;
         }
@@ -106,10 +107,6 @@ var HelloWorldLayer = cc.Layer.extend({
 
         for (var i = prevLineIdx + 1; i <= this._lineIdx; ++i) {
             var curP = cc.p(this._moveList[i][0], this._moveList[i][1]);
-            if((curP.x == prevP.x) || (curP.y == prevP.y))
-            {
-                console.log('wtf');
-            } 
 
             for (var j in this._sprites) {
                 var redman = this._sprites[j];
@@ -133,20 +130,18 @@ var HelloWorldLayer = cc.Layer.extend({
         var pos = this._draw.convertToWorldSpace(cc.p(0, 0));
         this._fingerstreak.x = pos.x + 32 / 2 - 6 * 2;
         this._fingerstreak.y = pos.y + 32 / 2 - 6 * 2;
-        //this._streak.setPosition(this._thunderman.x + TILE_SIZE / 2, this._thunderman.y + TILE_SIZE / 2); 
     },
 
-    containMap : function(ccp)
-    {
-        return cc.rectContainsPoint(cc.rect(0, 0, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), ccp); 
+    containMap: function(ccp) {
+        return cc.rectContainsPoint(cc.rect(0, 0, MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE), ccp);
     }
 
 });
 
-var HelloWorldScene = cc.Scene.extend({
+var GameScene = cc.Scene.extend({
     onEnter: function() {
         this._super();
-        var layer = new HelloWorldLayer();
+        var layer = new GameLayer();
         this.addChild(layer);
 
         cc.eventManager.addListener({
@@ -159,11 +154,15 @@ var HelloWorldScene = cc.Scene.extend({
                 var touchLocation = touch.getLocation();
                 var layer = event.getCurrentTarget();
 
-                if(!layer.containMap(touchLocation))
+                if (!layer.containMap(touchLocation))
                     return;
 
+                if (!layer._thundermanRunning)
+                    return;
 
                 var draw = layer._draw;
+                if (!draw.isVisible())
+                    return;
 
                 if (layer._moveList.length >= 1) {
                     var lastPoint = layer._moveList[layer._moveList.length - 1];
@@ -189,7 +188,13 @@ var HelloWorldScene = cc.Scene.extend({
                 var draw = event.getCurrentTarget()._draw;
                 var layer = event.getCurrentTarget();
 
-                if(!layer.containMap(touchLocation))
+                if (layer._thundermanRunning)
+                    return;
+
+                if (!layer.containMap(touchLocation))
+                    return;
+
+                if (!cc.rectContainsPoint(layer._thunderman.getBoundingBox(), touchLocation))
                     return;
 
                 draw.setVisible(true);
@@ -199,6 +204,7 @@ var HelloWorldScene = cc.Scene.extend({
                 layer._fingerstreak.x = draw.x + 32 / 2 - 6 * 2;
                 layer._fingerstreak.y = draw.y + 32 / 2 - 6 * 2;
                 layer._moveList = [];
+                layer._thundermanRunning = true;
             },
 
             onTouchesEnded: function(touches, event) {
@@ -208,17 +214,27 @@ var HelloWorldScene = cc.Scene.extend({
                 var touch = touches[0];
                 var touchLocation = touch.getLocation();
                 var draw = event.getCurrentTarget()._draw;
+
+                if (!draw.isVisible())
+                    return;
+
                 var layer = event.getCurrentTarget();
 
-                if(!layer.containMap(touchLocation))
+                if (!layer.containMap(touchLocation))
+                    return;
+
+                if (!layer._thundermanRunning)
                     return;
 
                 draw.setVisible(false);
                 draw.x = touchLocation.x;
                 draw.y = touchLocation.y;
 
+
                 if (layer._moveList.length <= 1)
                     return;
+
+                layer._thundermanRunning = false;
 
                 layer._lineIdx = 0;
                 layer._thunderman.x = layer._moveList[0][0];
@@ -254,7 +270,6 @@ var HelloWorldScene = cc.Scene.extend({
 
 
             onTouchesCancelled: function(touches, event) {
-                console.log("end");
                 return;
             }
         }, layer);
