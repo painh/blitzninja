@@ -1,104 +1,10 @@
 var TILE_SIZE = 32;
 var MAP_SIZE = 10;
 var FINGER_GUIDE_SIZE = 32;
+var START_Y = 0;
+var STATUS_HEIGHT = 30;
 
-function randomRange(n1, n2) {
-    return Math.floor((Math.random() * (parseInt(n2) - parseInt(n1) + 1)) + parseInt(n1));
-};
-
-function lineRectIntersect(p1, p2, rect) {
-    var rectLine = [
-        [cc.p(rect.x, rect.y), cc.p(rect.x + rect.width, rect.y)],
-        [cc.p(rect.x + rect.width, rect.y), cc.p(rect.x + rect.width, rect.y + rect.height)],
-        [cc.p(rect.x + rect.width, rect.y + rect.height), cc.p(rect.x, rect.y + rect.height)],
-        [cc.p(rect.x, rect.y + rect.height), cc.p(rect.x, rect.y)],
-    ];
-
-    for (var i = 0; i < 4; ++i)
-        if (cc.pSegmentIntersect(p1, p2, rectLine[i][0], rectLine[i][1]))
-            return true;
-
-    return false;
-}
-
-removeFromList = function(list, obj) {
-    var idx = list.indexOf(obj);
-    if (idx == -1)
-        return;
-
-    list.splice(idx, 1);
-}
-
-
-
-var EmptyMapList = function() {
-    this.list = [];
-
-    for (var i = 0; i < MAP_SIZE; ++i)
-        for (var j = 0; j < MAP_SIZE; ++j) {
-            this.list.push(cc.p(i, j));
-        }
-}
-
-EmptyMapList.prototype.Draw = function() {
-    var idx = randomRange(0, this.list.length - 1);
-
-    var p = this.list[idx];
-
-    removeFromList(this.list, p);
-
-    return p;
-}
-
-EmptyMapList.prototype.DrawOutLine = function() {
-    for(var i = 0; i < 200; ++i)
-    {
-        var idx = randomRange(0, this.list.length - 1);
-
-        var p = this.list[idx];
-
-        if(p.x == 0 || p.x == MAP_SIZE -1 ||
-            p.y == 0 || p.y == MAP_SIZE - 1)
-        {
-            removeFromList(this.list, p);
-
-            return p;
-        }
-
-    }
-
-    throw "wtf";
-}
-
-EmptyMapList.prototype.DrawInRect = function() {
-    for(var i = 0; i < 200; ++i)
-    {
-        var idx = randomRange(0, this.list.length - 1);
-
-        var p = this.list[idx];
-
-        if( (p.x != 0 && p.x != MAP_SIZE -1 &&
-            p.y != 0 && p.y != MAP_SIZE - 1) )
-        {
-            removeFromList(this.list, p);
-
-            return p;
-        }
-
-    }
-
-    throw "wtf";
-}
-
-
-EmptyMapList.prototype.Remove = function(x, y) {
-    var idx = y * MAP_SIZE + x;
-
-    var p = this.list[idx];
-
-    removeFromList(this.list, p);
-}
-
+var g_GameStatus = new GameStatus();
 
 var GameLayer = cc.Layer.extend({
     _draw: null,
@@ -110,6 +16,8 @@ var GameLayer = cc.Layer.extend({
     _thundermanRunning: false,
     _spot: null,
     _gameEndTS: null,
+    _status: null,
+    _gameOver: false,
 
     isWaitGameEnd: function() {
         if (this._gameEndTS == null)
@@ -121,6 +29,15 @@ var GameLayer = cc.Layer.extend({
     SetWaitGameEnd: function(afterSec) {
         this._gameEndTS = new Date();
         this._gameEndTS.setSeconds(this._gameEndTS.getSeconds() + afterSec);
+    },
+
+    NextStage: function() {
+        this.SetWaitGameEnd(1);
+    },
+
+    GameOver: function() {
+        this._gameOver = true;
+        this.SetWaitGameEnd(3);
     },
 
     Init: function() {
@@ -183,7 +100,19 @@ var GameLayer = cc.Layer.extend({
             this.AddObject("block", p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, res.block_0, 1);
         }
 
+        var coinCnt = randomRange(0, 5);
+
+        for (var i = 0; i < coinCnt; ++i) {
+            var p = emptyList.DrawOutLine();
+            this.AddObject("coin", p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, res.coin, 1);
+        }
+
         this._draw.drawCircle(cc.p(0, 0), FINGER_GUIDE_SIZE, 0, 20, false, 6, cc.color(0, 255, 0, 255));
+
+        this._status = cc.LabelTTF.create("HP", "Arial", "18", cc.TEXT_ALIGNMENT_LEFT);
+        this._status.x = winSize.width / 2;
+        this._status.y = START_Y + MAP_SIZE * TILE_SIZE + STATUS_HEIGHT;
+        this.addChild(this._status);
     },
 
     AddObject: function(type, x, y, filename, layerIdx) {
@@ -208,19 +137,22 @@ var GameLayer = cc.Layer.extend({
         this.Init();
 
         this.schedule(this.onUpdate);
+        var winSize = cc.director.getWinSize();
+        g_GameStatus.Init();
 
         return true;
     },
 
     onThunderManMoved: function() {
+        if (this.isWaitGameEnd())
+            return;
+
         if (this._lineIdx >= this._moveList.length - 1) {
             this._thunderman.stopAllActions();
-            this.SetWaitGameEnd(3);
+            this.GameOver();
             return;
         }
 
-        if(this.isWaitGameEnd())
-            return;
 
         var prevLineIdx = this._lineIdx;
         this._lineIdx = Math.min(this._lineIdx + 3, this._moveList.length - 1);
@@ -241,27 +173,52 @@ var GameLayer = cc.Layer.extend({
             for (var j in this._sprites) {
                 var obj = this._sprites[j];
 
+                if(obj.info.checked)
+                    continue;
+
                 if (lineRectIntersect(prevP, curP, obj.getBoundingBox())) {
                     if (obj.info.type == "spot") {
-                        this.SetWaitGameEnd(3);
+                        this.NextStage();
                         return;
                     }
                     if (obj.info.type == "block") {
-                        this.SetWaitGameEnd(3);
+                        this.GameOver();
                         return;
                     }
-                    var blink = cc.Blink.create(1, 20);
-                    var callback = cc.CallFunc.create(function(data) {
-                        data.stopAllActions();
-                        data.setVisible(true);
-                    }, this, obj);
-                    var seq = cc.Sequence.create([blink, callback]);
-                    obj.runAction(seq);
+
+                    if (obj.info.type == "redman") {
+                        g_GameStatus.hp--;
+
+                        var blink = cc.Blink.create(1, 20);
+                        var callback = cc.CallFunc.create(function(data) {
+                            data.stopAllActions();
+                            data.setVisible(true);
+                        }, this, obj);
+                        var blinkSeq = cc.Sequence.create([blink, callback]);
+                        obj.runAction(blinkSeq);
+
+                    }
+
+                    if (obj.info.type == "coin") {
+                        g_GameStatus.coins++
+
+                        var blink = cc.Blink.create(1, 20);
+                        var callback = cc.CallFunc.create(function(data) {
+                            data.stopAllActions();
+                            data.setVisible(true);
+                        }, this, obj);
+                        var blinkSeq = cc.Sequence.create([blink, callback]);
+                        obj.runAction(blinkSeq); 
+                        obj.info.checked = true;
+                    }
                 }
             }
 
             prevP = curP;
         }
+
+        if (g_GameStatus.hp <= 0)
+            this.GameOver();
     },
 
     onUpdate: function(delta) {
@@ -271,22 +228,27 @@ var GameLayer = cc.Layer.extend({
             this._fingerstreak.y = pos.y + FINGER_GUIDE_SIZE / 2 - 6 * 2;
         }
 
-        if(this._gameEndTS)
-        {
+        if (this._gameEndTS) {
             var now = new Date();
-            if(now > this._gameEndTS)
-                this.Init();
-
+            if (now > this._gameEndTS) {
+                if (this._gameOver)
+                    cc.director.runScene(new TitleScene());
+                else
+                {
+                    g_GameStatus.stage++;
+                    this.Init();
+                }
+            }
         }
 
+        this._status.setString(g_GameStatus.GetStatusText());
     },
 
     containMap: function(ccp) {
         return cc.rectContainsPoint(cc.rect(0, 0, MAP_SIZE * TILE_SIZE, MAP_SIZE * TILE_SIZE), ccp);
     },
 
-    touchEnd : function(location)
-    {
+    touchEnd: function(location) {
         var draw = this._draw;
 
         if (!draw.isVisible())
@@ -311,6 +273,7 @@ var GameLayer = cc.Layer.extend({
         var prevP = cc.p(this._thunderman.x, this._thunderman.y);
         var p = cc.p(this._moveList[1][0], this._moveList[1][1]);
         var distance = cc.pDistanceSQ(prevP, p);
+        g_GameStatus.lines -= distance;
         var move = cc.moveTo(distance / (60 * 1000), p);
         var callback = cc.CallFunc.create(this.onThunderManMoved, this);
         var seq = cc.Sequence.create([move, callback]);

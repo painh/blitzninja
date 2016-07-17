@@ -2,7 +2,7 @@
     "project_type": "javascript",
 
     "debugMode" : 1,
-    "showFPS" : true,
+    "showFPS" : false,
     "frameRate" : 60,
     "noCache" : false,
     "id" : "gameCanvas",
@@ -15,6 +15,9 @@
         "src/resource.js",
         "src/title.js",
         "src/app.js",
+        "src/emptyMapList.js",
+        "src/utils.js",
+        "src/gameStatus.js",
         "src/gameLayer.js"
     ]
 }
