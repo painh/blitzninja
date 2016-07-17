@@ -173,7 +173,7 @@ var GameLayer = cc.Layer.extend({
             for (var j in this._sprites) {
                 var obj = this._sprites[j];
 
-                if(obj.info.checked)
+                if (obj.info.checked)
                     continue;
 
                 if (lineRectIntersect(prevP, curP, obj.getBoundingBox())) {
@@ -202,13 +202,13 @@ var GameLayer = cc.Layer.extend({
                     if (obj.info.type == "coin") {
                         g_GameStatus.coins++
 
-                        var blink = cc.Blink.create(1, 20);
+                            var blink = cc.Blink.create(1, 20);
                         var callback = cc.CallFunc.create(function(data) {
                             data.stopAllActions();
                             data.setVisible(true);
                         }, this, obj);
                         var blinkSeq = cc.Sequence.create([blink, callback]);
-                        obj.runAction(blinkSeq); 
+                        obj.runAction(blinkSeq);
                         obj.info.checked = true;
                     }
                 }
@@ -221,11 +221,16 @@ var GameLayer = cc.Layer.extend({
             this.GameOver();
     },
 
-    onUpdate: function(delta) {
+    RefreshFingerStreakPos : function()
+    {
         var pos = this._draw.convertToWorldSpace(cc.p(0, 0));
+        this._fingerstreak.x = pos.x + FINGER_GUIDE_SIZE / 2 - 6 * 2;
+        this._fingerstreak.y = pos.y + FINGER_GUIDE_SIZE / 2 - 6 * 2;
+    },
+
+    onUpdate: function(delta) {
         if (this._thundermanRunning) {
-            this._fingerstreak.x = pos.x + FINGER_GUIDE_SIZE / 2 - 6 * 2;
-            this._fingerstreak.y = pos.y + FINGER_GUIDE_SIZE / 2 - 6 * 2;
+            this.RefreshFingerStreakPos();
         }
 
         if (this._gameEndTS) {
@@ -233,8 +238,7 @@ var GameLayer = cc.Layer.extend({
             if (now > this._gameEndTS) {
                 if (this._gameOver)
                     cc.director.runScene(new TitleScene());
-                else
-                {
+                else {
                     g_GameStatus.stage++;
                     this.Init();
                 }
@@ -273,7 +277,9 @@ var GameLayer = cc.Layer.extend({
         var prevP = cc.p(this._thunderman.x, this._thunderman.y);
         var p = cc.p(this._moveList[1][0], this._moveList[1][1]);
         var distance = cc.pDistanceSQ(prevP, p);
-        g_GameStatus.lines -= distance;
+        g_GameStatus.lines -= parseInt(distance);
+        if (g_GameStatus.lines <= 0)
+            this.GameOver();
         var move = cc.moveTo(distance / (60 * 1000), p);
         var callback = cc.CallFunc.create(this.onThunderManMoved, this);
         var seq = cc.Sequence.create([move, callback]);

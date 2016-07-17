@@ -73,7 +73,7 @@ var GameScene = cc.Scene.extend({
                 if (layer._fingerstreak)
                     layer.removeChild(layer._fingerstreak, true);
                 layer._fingerstreak = new cc.MotionStreak(3, 3, 6, cc.color.GREEN, res.streak);
-                layer._fingerstreak.setPosition(draw.x + FINGER_GUIDE_SIZE / 2, draw.x + FINGER_GUIDE_SIZE / 2);
+                layer.RefreshFingerStreakPos();
                 layer.addChild(layer._fingerstreak, 3);
             },
 
