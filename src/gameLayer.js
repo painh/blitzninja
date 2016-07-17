@@ -160,6 +160,11 @@ var GameLayer = cc.Layer.extend({
         var prevP = cc.p(this._thunderman.x, this._thunderman.y);
         var p = cc.p(this._moveList[this._lineIdx][0], this._moveList[this._lineIdx][1]);
         var distance = cc.pDistanceSQ(prevP, p);
+
+        g_GameStatus.lines -= parseInt(distance / 100);
+        if (g_GameStatus.lines <= 0)
+            this.GameOver();
+
         var duration = 1 / 100000 * distance;
         var move = cc.moveTo(duration, p);
         //        console.log([this._lineIdx, this._moveList.length, distance, duration]);
@@ -221,8 +226,7 @@ var GameLayer = cc.Layer.extend({
             this.GameOver();
     },
 
-    RefreshFingerStreakPos : function()
-    {
+    RefreshFingerStreakPos: function() {
         var pos = this._draw.convertToWorldSpace(cc.p(0, 0));
         this._fingerstreak.x = pos.x + FINGER_GUIDE_SIZE / 2 - 6 * 2;
         this._fingerstreak.y = pos.y + FINGER_GUIDE_SIZE / 2 - 6 * 2;
@@ -277,9 +281,6 @@ var GameLayer = cc.Layer.extend({
         var prevP = cc.p(this._thunderman.x, this._thunderman.y);
         var p = cc.p(this._moveList[1][0], this._moveList[1][1]);
         var distance = cc.pDistanceSQ(prevP, p);
-        g_GameStatus.lines -= parseInt(distance);
-        if (g_GameStatus.lines <= 0)
-            this.GameOver();
         var move = cc.moveTo(distance / (60 * 1000), p);
         var callback = cc.CallFunc.create(this.onThunderManMoved, this);
         var seq = cc.Sequence.create([move, callback]);
