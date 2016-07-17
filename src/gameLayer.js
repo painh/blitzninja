@@ -50,6 +50,47 @@ EmptyMapList.prototype.Draw = function() {
     return p;
 }
 
+EmptyMapList.prototype.DrawOutLine = function() {
+    for(var i = 0; i < 200; ++i)
+    {
+        var idx = randomRange(0, this.list.length - 1);
+
+        var p = this.list[idx];
+
+        if(p.x == 0 || p.x == MAP_SIZE -1 ||
+            p.y == 0 || p.y == MAP_SIZE - 1)
+        {
+            removeFromList(this.list, p);
+
+            return p;
+        }
+
+    }
+
+    throw "wtf";
+}
+
+EmptyMapList.prototype.DrawInRect = function() {
+    for(var i = 0; i < 200; ++i)
+    {
+        var idx = randomRange(0, this.list.length - 1);
+
+        var p = this.list[idx];
+
+        if( (p.x != 0 && p.x != MAP_SIZE -1 &&
+            p.y != 0 && p.y != MAP_SIZE - 1) )
+        {
+            removeFromList(this.list, p);
+
+            return p;
+        }
+
+    }
+
+    throw "wtf";
+}
+
+
 EmptyMapList.prototype.Remove = function(x, y) {
     var idx = y * MAP_SIZE + x;
 
@@ -107,41 +148,15 @@ var GameLayer = cc.Layer.extend({
         this._draw.setVisible(false);
 
         this._spot = new cc.Sprite(res.spot);
-        var axis = randomRange(0, 1);
-        var axisType = randomRange(0, 1);
-        var pos = randomRange(0, MAP_SIZE - 1);
-        var x, y;
+        var ccp = emptyList.DrawOutLine();
+        ccp.x = ccp.x * TILE_SIZE + TILE_SIZE / 2;
+        ccp.y = ccp.y * TILE_SIZE + TILE_SIZE / 2;
 
-        if (axis == 0 && axisType == 0) {
-            x = pos * TILE_SIZE;
-            y = 0;
-        }
-
-        if (axis == 0 && axisType == 1) {
-            x = pos * TILE_SIZE;
-            y = (MAP_SIZE - 1) * TILE_SIZE;
-        }
-
-        if (axis == 1 && axisType == 0) {
-            y = pos * TILE_SIZE;
-            x = 0;
-        }
-
-        if (axis == 1 && axisType == 1) {
-            y = pos * TILE_SIZE;
-            x = (MAP_SIZE - 1) * TILE_SIZE;
-        }
-
-        x += TILE_SIZE / 2;
-        y += TILE_SIZE / 2;
-
-        emptyList.Remove((x - TILE_SIZE / 2) / TILE_SIZE,
-                         (y - TILE_SIZE / 2) / TILE_SIZE);
-        this.AddObject("spot", x, y, res.spot, 5);
+        this.AddObject("spot", ccp.x, ccp.y, res.spot, 5);
 
         this._thunderman = new cc.Sprite(res.thunderman);
         this.addChild(this._thunderman, 5, 4);
-        var ccp = emptyList.Draw();
+        var ccp = emptyList.DrawOutLine();
         this._thunderman.x = TILE_SIZE * ccp.x + TILE_SIZE / 2;
         this._thunderman.y = TILE_SIZE * ccp.y + TILE_SIZE / 2;
         this._thunderman.setScale(4);
@@ -163,8 +178,8 @@ var GameLayer = cc.Layer.extend({
             this.AddObject("redman", p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, res.redman, 3);
         }
 
-        for (var i = 0; i < 20; ++i) {
-            var p = emptyList.Draw();
+        for (var i = 0; i < 10; ++i) {
+            var p = emptyList.DrawOutLine();
             this.AddObject("block", p.x * TILE_SIZE + TILE_SIZE / 2, p.y * TILE_SIZE + TILE_SIZE / 2, res.block_0, 1);
         }
 
