@@ -14,11 +14,14 @@ var GameScene = cc.Scene.extend({
                 var touchLocation = touch.getLocation();
                 var layer = event.getCurrentTarget();
 
-                if (!layer.containMap(touchLocation))
-                    return;
 
                 if (!layer._thundermanRunning)
                     return;
+
+                if (!layer.containMap(touchLocation)) {
+                    layer.touchEnd(touchLocation);
+                    return;
+                }
 
                 var draw = layer._draw;
                 if (!draw.isVisible())
@@ -51,6 +54,9 @@ var GameScene = cc.Scene.extend({
                 if (layer._thundermanRunning)
                     return;
 
+                if (layer.isWaitGameEnd())
+                    return;
+
                 if (!layer.containMap(touchLocation))
                     return;
 
@@ -61,10 +67,14 @@ var GameScene = cc.Scene.extend({
                 draw.x = touchLocation.x;
                 draw.y = touchLocation.y;
 
-                layer._fingerstreak.x = draw.x + 32 / 2 - 6 * 2;
-                layer._fingerstreak.y = draw.y + 32 / 2 - 6 * 2;
                 layer._moveList = [];
                 layer._thundermanRunning = true;
+
+                if (layer._fingerstreak)
+                    layer.removeChild(layer._fingerstreak, true);
+                layer._fingerstreak = new cc.MotionStreak(3, 3, 6, cc.color.GREEN, res.streak);
+                layer._fingerstreak.setPosition(draw.x + FINGER_GUIDE_SIZE / 2, draw.x + FINGER_GUIDE_SIZE / 2);
+                layer.addChild(layer._fingerstreak, 3);
             },
 
             onTouchesEnded: function(touches, event) {
@@ -73,39 +83,8 @@ var GameScene = cc.Scene.extend({
 
                 var touch = touches[0];
                 var touchLocation = touch.getLocation();
-                var draw = event.getCurrentTarget()._draw;
-
-                if (!draw.isVisible())
-                    return;
-
                 var layer = event.getCurrentTarget();
-
-                if (!layer.containMap(touchLocation))
-                    return;
-
-                if (!layer._thundermanRunning)
-                    return;
-
-                draw.setVisible(false);
-                draw.x = touchLocation.x;
-                draw.y = touchLocation.y;
-
-                layer._thundermanRunning = false;
-
-                if (layer._moveList.length <= 1)
-                    return;
-
-
-                layer._lineIdx = 0;
-                layer._thunderman.x = layer._moveList[0][0];
-                layer._thunderman.y = layer._moveList[0][1];
-                var prevP = cc.p(layer._thunderman.x, layer._thunderman.y);
-                var p = cc.p(layer._moveList[1][0], layer._moveList[1][1]);
-                var distance = cc.pDistanceSQ(prevP, p);
-                var move = cc.moveTo(distance / (60 * 1000), p);
-                var callback = cc.CallFunc.create(layer.onThunderManMoved, layer);
-                var seq = cc.Sequence.create([move, callback]);
-                layer._thunderman.runAction(seq);
+                layer.touchEnd(touchLocation);
             },
 
 
