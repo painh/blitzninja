@@ -6,6 +6,34 @@ var STATUS_HEIGHT = 30;
 
 var g_GameStatus = new GameStatus();
 
+function FloatingText(layer, txt, x, y)
+{ 
+    var label = new cc.LabelTTF(txt, "sans-serif", 16); 
+    label.x = x;
+    label.y = y;
+
+    var move = cc.moveBy(1, cc.p(0, 10));
+
+    var callback = cc.CallFunc.create(function(data) {
+        data.removeFromParent(true);
+    }, this, label); 
+    var seq = cc.Sequence.create([move, callback]);
+    label.runAction(seq);
+    layer.addChild(label);
+}
+
+function BlinkAndDestroy(obj)
+{
+    var blink = cc.Blink.create(1, 20);
+    var callback = cc.CallFunc.create(function(data) {
+        data.stopAllActions();
+        data.setVisible(true);
+        data.removeFromParent(true);
+    }, obj, obj);
+    var blinkSeq = cc.Sequence.create([blink, callback]);
+    obj.runAction(blinkSeq);
+}
+
 var GameLayer = cc.Layer.extend({
     _draw: null,
     _fingerstreak: null,
@@ -36,7 +64,8 @@ var GameLayer = cc.Layer.extend({
     },
 
     GameOver: function() {
-        this._gameOver = true;
+        this._gameOver = true; 
+        BlinkAndDestroy(this._thunderman); 
         this.SetWaitGameEnd(3);
     },
 
@@ -149,6 +178,7 @@ var GameLayer = cc.Layer.extend({
 
         if (this._lineIdx >= this._moveList.length - 1) {
             this._thunderman.stopAllActions();
+            FloatingText(this, 'no exit!', this._thunderman.x, this._thunderman.y);
             this.GameOver();
             return;
         }
@@ -163,7 +193,10 @@ var GameLayer = cc.Layer.extend({
 
         g_GameStatus.lines -= parseInt(distance / 100);
         if (g_GameStatus.lines <= 0)
+        {
+            FloatingText(this, 'no lines!', this._thunderman.x, this._thunderman.y);
             this.GameOver();
+        }
 
         var duration = 1 / 100000 * distance;
         var move = cc.moveTo(duration, p);
@@ -171,6 +204,8 @@ var GameLayer = cc.Layer.extend({
         var callback = cc.CallFunc.create(this.onThunderManMoved, this);
         var seq = cc.Sequence.create([move, callback]);
         this._thunderman.runAction(seq);
+        
+        var layer = this;
 
         for (var i = prevLineIdx + 1; i <= this._lineIdx; ++i) {
             var curP = cc.p(this._moveList[i][0], this._moveList[i][1]);
@@ -182,39 +217,28 @@ var GameLayer = cc.Layer.extend({
                     continue;
 
                 if (lineRectIntersect(prevP, curP, obj.getBoundingBox())) {
+                    obj.info.checked = true;
+
                     if (obj.info.type == "spot") {
                         this.NextStage();
                         return;
                     }
-                    if (obj.info.type == "block") {
+                    if (obj.info.type == "block") { 
+                        FloatingText(this, 'blocked', this._thunderman.x, this._thunderman.y);
                         this.GameOver();
                         return;
                     }
 
                     if (obj.info.type == "redman") {
                         g_GameStatus.hp--;
-
-                        var blink = cc.Blink.create(1, 20);
-                        var callback = cc.CallFunc.create(function(data) {
-                            data.stopAllActions();
-                            data.setVisible(true);
-                        }, this, obj);
-                        var blinkSeq = cc.Sequence.create([blink, callback]);
-                        obj.runAction(blinkSeq);
-
+                        FloatingText(layer, "-1hp", obj.x, obj.y);    
+                        BlinkAndDestroy(obj); 
                     }
 
                     if (obj.info.type == "coin") {
                         g_GameStatus.coins++
-
-                            var blink = cc.Blink.create(1, 20);
-                        var callback = cc.CallFunc.create(function(data) {
-                            data.stopAllActions();
-                            data.setVisible(true);
-                        }, this, obj);
-                        var blinkSeq = cc.Sequence.create([blink, callback]);
-                        obj.runAction(blinkSeq);
-                        obj.info.checked = true;
+                        FloatingText(layer, "+1coin", obj.x, obj.y);    
+                        BlinkAndDestroy(obj); 
                     }
                 }
             }
@@ -223,7 +247,10 @@ var GameLayer = cc.Layer.extend({
         }
 
         if (g_GameStatus.hp <= 0)
+        {
+            FloatingText(this, 'no hp!', this._thunderman.x, this._thunderman.y);
             this.GameOver();
+        }
     },
 
     RefreshFingerStreakPos: function() {
